@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.27;
 
 import "./CampaignTreasury.sol";
 
@@ -11,11 +11,18 @@ contract Campaign {
     // contracts
     CampaignTreasury public treasury;
 
-    constructor(string memory _campaignName, string memory _campaignDescription) {
+    constructor(
+        string memory _campaignName, 
+        string memory _campaignDescription,
+        string memory _tokenName,
+        string memory _tokenSymbol
+    ) {
         owner = msg.sender;
-        treasury = new CampaignTreasury(address(this));
         campaignName = _campaignName;
         campaignDescription = _campaignDescription;
+        CampaignToken token = new CampaignToken(_tokenName, _tokenSymbol, address(this));
+        treasury = new CampaignTreasury(address(this), address(token));
+        token.transferOwnership(address(treasury));
         createdAt = block.timestamp;
     }
 

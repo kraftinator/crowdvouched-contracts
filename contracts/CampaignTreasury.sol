@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.27;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./CampaignToken.sol";
 
 contract CampaignTreasury {
     address public campaign;
+    CampaignToken public token;
     
     event ContributionReceived(address indexed contributor, uint256 amount);
     event ERC20Withdrawal(address indexed token, uint256 amount, address indexed to);
 
-    constructor(address _campaign) {
+    constructor(address _campaign, address _token) {
         campaign = _campaign;
+        token = CampaignToken(_token);
     }
 
     function contribute() external payable {
@@ -29,8 +32,8 @@ contract CampaignTreasury {
     }
 
     function withdrawERC20(address tokenAddress, uint256 amount, address recipient) external onlyCampaign {
-        IERC20 token = IERC20(tokenAddress);
-        require(token.balanceOf(address(this)) >= amount, "Insufficient token balance");
+        IERC20 erc20Token = IERC20(tokenAddress);
+        require(erc20Token.balanceOf(address(this)) >= amount, "Insufficient token balance");
         require(recipient != address(0), "Invalid recipient address");
         token.transfer(recipient, amount);
         emit ERC20Withdrawal(tokenAddress, amount, recipient);
