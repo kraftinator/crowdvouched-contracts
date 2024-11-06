@@ -1,28 +1,29 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "./CampaignTreasury.sol";
+
 contract Campaign {
-    // State variables for owner, name, description, and creation date
     address public owner;
     string public campaignName;
     string public campaignDescription;
     uint256 public createdAt;
+    // contracts
+    CampaignTreasury public treasury;
 
-    // Constructor to initialize the campaign
     constructor(string memory _campaignName, string memory _campaignDescription) {
-        owner = msg.sender;  // Set the owner as the deployer of the contract
+        owner = msg.sender;
+        treasury = new CampaignTreasury(address(this));
         campaignName = _campaignName;
         campaignDescription = _campaignDescription;
-        createdAt = block.timestamp;  // Set creation date to current block timestamp
+        createdAt = block.timestamp;
     }
 
-    // Modifier to restrict functions to only the owner
     modifier onlyOwner() {
         require(msg.sender == owner, "Not the contract owner");
         _;
     }
 
-    // Event logging for updates
     event CampaignNameUpdated(string newName);
     event CampaignDescriptionUpdated(string newDescription);
 
@@ -35,5 +36,10 @@ contract Campaign {
     function setCampaignDescription(string memory _newDescription) public onlyOwner {
         campaignDescription = _newDescription;
         emit CampaignDescriptionUpdated(_newDescription);
+    }
+
+    // Function to withdraw ERC20 tokens from the treasury
+    function withdrawTreasuryERC20(address tokenAddress, uint256 amount, address recipient) external onlyOwner {
+        treasury.withdrawERC20(tokenAddress, amount, recipient);
     }
 }
