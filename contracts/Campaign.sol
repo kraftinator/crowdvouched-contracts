@@ -49,4 +49,8 @@ contract Campaign {
     function withdrawTreasuryERC20(address tokenAddress, uint256 amount, address recipient) external onlyOwner {
         treasury.withdrawERC20(tokenAddress, amount, recipient);
     }
+
+    function mintTokens(address recipient, uint256 amount) external onlyOwner {
+        treasury.mintTokens(recipient, amount);
+    }
 }

@@ -39,4 +39,8 @@ contract CampaignTreasury {
         emit ERC20Withdrawal(tokenAddress, amount, recipient);
     }
 
+    function mintTokens(address to, uint256 amount) external onlyCampaign {
+        token.mint(to, amount);
+    }
+
 }
