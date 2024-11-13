@@ -10,7 +10,9 @@ contract CampaignToken is ERC20, Ownable {
         string memory name,
         string memory symbol,
         address initialOwner
-    ) ERC20(name, symbol) Ownable(initialOwner) {}
+    ) ERC20(name, symbol)  {
+        transferOwnership(initialOwner);
+    }
 
     // Mint function restricted to the owner (initially the CampaignTreasury)
     function mint(address to, uint256 amount) external onlyOwner {
