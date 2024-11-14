@@ -1,6 +1,5 @@
 # Crowdvouched
-## _A Decentralized Crowdsourcing Platform_
-Crowdvouched is a decentralized crowdsourcing platform that uses blockchain technology to gather and validate data. Users create and manage data-driven projects, where contributors submit and verify data in exchange for project-specific tokens. These tokens are minted upon successful data validation through a novel "proof of useful work" mechanism and are backed by project treasuries funded through donations and other revenue streams. Crowdvouched incorporates gamification by turning data validation into a competitive process. Contributors earn reputation scores and rank on leaderboards, motivating accuracy and rewarding active participation.
+Crowdvouched is a decentralized crowdsourcing platform for gathering data and making it publicly accessible as a shared resource. By placing bounties on pieces of information, Crowdvouched incentivizes contributors to locate, submit, and verify data. The submitted data is validated through a "proof of useful work" mechanism and participants are rewarded with project-specific tokens. The tokens are backed by project treasuries funded through donations and additional revenue streams. Solved bounties are stored on a decentralized storage system, making them accessible to all. This allows them to be easily integrated into other Web3 applications.
 
 ## Whitepaper
 [crowdvouched.xyz/whitepaper](https://www.crowdvouched.xyz/whitepaper)
