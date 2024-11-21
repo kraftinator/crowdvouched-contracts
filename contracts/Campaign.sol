@@ -33,8 +33,8 @@ contract Campaign {
         baseURI = _baseURI;
 
         CampaignToken token = new CampaignToken(_tokenName, _tokenSymbol, address(this));
-        campaignNFT = new CampaignNFT(_nftName, _nftSymbol, _mintFee, address(treasury), address(this));
         treasury = new CampaignTreasury(address(this), address(token));
+        campaignNFT = new CampaignNFT(_nftName, _nftSymbol, _mintFee, address(this));
         token.transferOwnership(address(treasury));
         createdAt = block.timestamp;
     }

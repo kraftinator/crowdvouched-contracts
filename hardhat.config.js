@@ -22,5 +22,9 @@ module.exports = {
       url: `https://sepolia.infura.io/v3/${INFURA_API_KEY}`,
       accounts: [SEPOLIA_PRIVATE_KEY],
     },
+    baseSepolia: {
+      url: `https://sepolia.base.org`,
+      accounts: [SEPOLIA_PRIVATE_KEY]
+    },
   },
 };

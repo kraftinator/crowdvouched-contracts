@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./CampaignTreasury.sol";
 import "./Campaign.sol";
 
+//import "hardhat/console.sol";
+
 contract CampaignNFT is ERC721Enumerable, Ownable {
     uint256 public mintFee;
     CampaignTreasury public treasury;
@@ -17,21 +19,18 @@ contract CampaignNFT is ERC721Enumerable, Ownable {
         string memory name,
         string memory symbol,
         uint256 _mintFee,
-        address treasuryAddress,
         address campaignAddress
     ) ERC721(name, symbol) {
         mintFee = _mintFee;
-        treasury = CampaignTreasury(payable(treasuryAddress));
         campaign = Campaign(campaignAddress);
     }
 
-    // Function to mint a validated record as an NFT
     function mintRecord(uint256 recordId) external payable {
         require(msg.value >= mintFee, "Insufficient minting fee");
         require(!_exists(recordId), "Record already minted");
         require(campaign.validatedRecord(recordId), "Record not validated");
 
-        (bool sent, ) = address(treasury).call{value: msg.value}("");
+        (bool sent, ) = payable(campaign.treasury()).call{value: msg.value}("");
         require(sent, "Minting fee transfer failed");
 
         _safeMint(msg.sender, recordId);
