@@ -4,6 +4,7 @@ pragma solidity ^0.8.27;
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./CampaignNFT.sol";
 import "./CampaignTreasury.sol";
+import "./SubmissionManager.sol";
 
 contract Campaign {
     using Strings for uint256;
@@ -16,6 +17,7 @@ contract Campaign {
     
     CampaignNFT public campaignNFT;
     CampaignTreasury public treasury;
+    SubmissionManager public submissionManager;
 
     constructor(
         string memory _campaignName, 
@@ -32,6 +34,7 @@ contract Campaign {
         campaignDescription = _campaignDescription;
         baseURI = _baseURI;
 
+        submissionManager = new SubmissionManager(address(this));
         CampaignToken token = new CampaignToken(_tokenName, _tokenSymbol, address(this));
         treasury = new CampaignTreasury(address(this), address(token));
         campaignNFT = new CampaignNFT(_nftName, _nftSymbol, _mintFee, address(this));
