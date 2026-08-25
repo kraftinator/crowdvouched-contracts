@@ -202,8 +202,8 @@ contract SubmissionManagerTest is Test {
 
     function test_Validation_CreditsUnclaimedRewardsToBothMatchers() public {
         _validateOneRecord(1);
-        assertEq(sm.unclaimedRewards(alice), 1);
-        assertEq(sm.unclaimedRewards(bob), 1);
+        assertEq(sm.unclaimedRewards(alice), sm.REWARD_PER_VALIDATION());
+        assertEq(sm.unclaimedRewards(bob), sm.REWARD_PER_VALIDATION());
     }
 
     function test_Validation_ThirdSubmitterMatchIsCredited() public {
@@ -215,8 +215,8 @@ contract SubmissionManagerTest is Test {
         vm.prank(carol); sm.assignBounty();
         vm.prank(carol); sm.submit(id, HASH_A, "QmCarol");
 
-        assertEq(sm.unclaimedRewards(alice), 1);
-        assertEq(sm.unclaimedRewards(carol), 1);
+        assertEq(sm.unclaimedRewards(alice), sm.REWARD_PER_VALIDATION());
+        assertEq(sm.unclaimedRewards(carol), sm.REWARD_PER_VALIDATION());
         // Bob did not match; no reward.
         assertEq(sm.unclaimedRewards(bob), 0);
     }
@@ -250,7 +250,7 @@ contract SubmissionManagerTest is Test {
         _validateOneRecord(1);
 
         vm.prank(alice); sm.claim();
-        assertEq(tok.balanceOf(alice), 1);
+        assertEq(tok.balanceOf(alice), sm.REWARD_PER_VALIDATION());
         assertEq(sm.unclaimedRewards(alice), 0);
     }
 

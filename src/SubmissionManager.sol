@@ -61,6 +61,10 @@ contract SubmissionManager {
     /// caller => recordId => has already submitted for this record.
     mapping(address => mapping(uint256 => bool)) public hasSubmitted;
 
+    /// Reward credited to each matching submitter when a record validates.
+    /// One whole token (18 decimals), per the whitepaper.
+    uint256 public constant REWARD_PER_VALIDATION = 1e18;
+
     /// Reward tokens the user has earned via validation but not yet claimed.
     /// Filled in _tryValidate; drained by claim().
     mapping(address => uint256) public unclaimedRewards;
@@ -290,7 +294,7 @@ contract SubmissionManager {
 
         // Credit each matcher one reward token; they claim it later via claim().
         for (uint8 j = 0; j < requiredMatches; ++j) {
-            unclaimedRewards[matchers[j]] += 1;
+            unclaimedRewards[matchers[j]] += REWARD_PER_VALIDATION;
         }
 
         emit RecordValidated(recordId, target, matchers);
