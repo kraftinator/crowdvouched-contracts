@@ -29,7 +29,7 @@ contract Deploy is Script {
         );
 
         // 2. Token — deployer becomes owner, will set minter/burner below.
-        CampaignToken token = new CampaignToken("Barton Test", "BART", deployer);
+        CampaignToken token = new CampaignToken("USC 1850", "USC1850", deployer);
 
         // 3. Treasury.
         CampaignTreasury treasury = new CampaignTreasury(address(token), address(sm));
@@ -37,8 +37,8 @@ contract Deploy is Script {
         // 4. Campaign (metadata + sub-contract references).
         Campaign campaign = new Campaign(
             deployer,
-            "1850 Barton Pilot",
-            "Digitize the Barton, Tioga Co. NY records from the 1850 US Census.",
+            "1850 U.S. Census Pilot",
+            "Digitize the Tioga Co. NY records from the 1850 U.S. Census.",
             address(sm),
             address(token),
             address(treasury),
