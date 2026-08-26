@@ -82,6 +82,15 @@ contract SubmissionManager {
     /// up freed (timed-out or awaiting-second) records.
     uint256 public nextRecordId = 1;
 
+    /// Records still in play: created but not yet validated. assignBounty only
+    /// ever walks this list, so its cost tracks work-in-progress rather than
+    /// campaign progress — validated records are removed and never scanned again.
+    uint256[] public activeRecordIds;
+
+    /// recordId => (position in activeRecordIds) + 1. Zero means "not active",
+    /// which lets removal skip the linear search for the record's slot.
+    mapping(uint256 => uint256) private _activeIndex;
+
     /// -----------------------------------------------------------------------
     /// Errors
     /// -----------------------------------------------------------------------
@@ -174,11 +183,13 @@ contract SubmissionManager {
             return current;
         }
 
-        // First scan any already-created records that are free.
-        for (uint256 id = 1; id < nextRecordId; ++id) {
-            Record storage r = _records[id];
-            if (r.validated) continue;
+        // Scan records still in play. Validated records have been removed from
+        // activeRecordIds, so finished work is never walked.
+        uint256 n = activeRecordIds.length;
+        for (uint256 i = 0; i < n; ++i) {
+            uint256 id = activeRecordIds[i];
             if (hasSubmitted[msg.sender][id]) continue;
+            Record storage r = _records[id];
             bool assigned = r.assignee != address(0);
             bool timedOut = assigned &&
                 block.timestamp > uint256(r.assignedAt) + assignmentTimeout;
@@ -191,6 +202,7 @@ contract SubmissionManager {
         // Otherwise mint a fresh record if we haven't hit totalRecords yet.
         if (nextRecordId <= totalRecords) {
             uint256 fresh = nextRecordId++;
+            _addActive(fresh);
             _assign(fresh);
             return fresh;
         }
@@ -246,6 +258,11 @@ contract SubmissionManager {
         return (r.assignee, r.assignedAt, r.validated, r.validatedHash, r.submissions.length);
     }
 
+    /// @notice How many records are currently in play (created, not validated).
+    function activeRecordCount() external view returns (uint256) {
+        return activeRecordIds.length;
+    }
+
     function submissionAt(uint256 recordId, uint256 idx) external view returns (Submission memory) {
         return _records[recordId].submissions[idx];
     }
@@ -253,6 +270,29 @@ contract SubmissionManager {
     /// -----------------------------------------------------------------------
     /// Internals
     /// -----------------------------------------------------------------------
+
+    /// @dev Append a newly created record to the active list.
+    function _addActive(uint256 recordId) private {
+        activeRecordIds.push(recordId);
+        _activeIndex[recordId] = activeRecordIds.length; // position + 1
+    }
+
+    /// @dev Remove a record from the active list by swapping the last element
+    ///      into its slot and popping. Order is not meaningful here, so this
+    ///      avoids shifting the tail.
+    function _removeActive(uint256 recordId) private {
+        uint256 pos = _activeIndex[recordId];
+        if (pos == 0) return; // not active; nothing to do
+        uint256 idx = pos - 1;
+        uint256 lastIdx = activeRecordIds.length - 1;
+        if (idx != lastIdx) {
+            uint256 lastId = activeRecordIds[lastIdx];
+            activeRecordIds[idx] = lastId;
+            _activeIndex[lastId] = idx + 1;
+        }
+        activeRecordIds.pop();
+        _activeIndex[recordId] = 0;
+    }
 
     function _assign(uint256 recordId) private {
         _records[recordId].assignee = msg.sender;
@@ -291,6 +331,7 @@ contract SubmissionManager {
         r.validated = true;
         r.validatedHash = target;
         ++validatedCount;
+        _removeActive(recordId);
 
         // Credit each matcher one reward token; they claim it later via claim().
         for (uint8 j = 0; j < requiredMatches; ++j) {
