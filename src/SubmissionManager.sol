@@ -43,9 +43,9 @@ contract SubmissionManager {
     /// Immutable config
     /// -----------------------------------------------------------------------
 
-    address public immutable campaign;
+    address public campaign;
     uint256 public immutable totalRecords;
-    uint32  public immutable assignmentTimeout; // seconds
+    uint32  public assignmentTimeout; // seconds, set by the campaign
     uint8   public immutable requiredMatches;   // matching submissions to validate
 
     /// -----------------------------------------------------------------------
@@ -108,6 +108,7 @@ contract SubmissionManager {
     error AlreadySet();
     error TokenNotSet();
     error NothingToClaim();
+    error SubmissionWindowClosed();
 
     /// -----------------------------------------------------------------------
     /// Events
@@ -118,7 +119,10 @@ contract SubmissionManager {
     event RecordValidated(uint256 indexed recordId, bytes32 dataHash, address[] validators);
     event CampaignCompleted(uint256 totalValidated);
     event TokenSet(address indexed token);
+    event CampaignUpdated(address indexed campaign);
+    event AssignmentTimeoutUpdated(uint32 assignmentTimeout);
     event RewardClaimed(address indexed claimant, uint256 amount);
+    event AssignmentExpired(uint256 indexed recordId, address indexed assignee);
 
     /// -----------------------------------------------------------------------
     /// Construction
@@ -143,6 +147,27 @@ contract SubmissionManager {
     /// -----------------------------------------------------------------------
     /// Campaign-only setup
     /// -----------------------------------------------------------------------
+
+    /// @notice Hand campaign control to the real Campaign contract. Deployment
+    ///         is a cycle — Campaign needs this address, this needs Campaign's —
+    ///         so the deployer holds the role until Campaign exists, then hands
+    ///         it over. One-shot in practice: only the current holder can move it.
+    function setCampaign(address _campaign) external {
+        if (msg.sender != campaign) revert NotCampaign();
+        if (_campaign == address(0)) revert ZeroAddress();
+        campaign = _campaign;
+        emit CampaignUpdated(_campaign);
+    }
+
+    /// @notice How long a caller has to submit before their assignment lapses.
+    /// @dev    Applies to in-flight assignments too: shortening it can cause
+    ///         records currently held to lapse immediately.
+    function setAssignmentTimeout(uint32 _assignmentTimeout) external {
+        if (msg.sender != campaign) revert NotCampaign();
+        if (_assignmentTimeout == 0) revert InvalidConfig();
+        assignmentTimeout = _assignmentTimeout;
+        emit AssignmentTimeoutUpdated(_assignmentTimeout);
+    }
 
     /// @notice Wire in the CampaignToken. One-shot; only the campaign can set.
     function setToken(address _token) external {
@@ -177,10 +202,22 @@ contract SubmissionManager {
     ///         and (c) the caller has not already submitted for.
     /// @return recordId The record the caller has been assigned.
     function assignBounty() external returns (uint256 recordId) {
-        // If the caller is already assigned to something, return it (idempotent).
+        // If the caller still holds a live assignment, hand it back (idempotent).
+        // If their window has closed, release it here rather than letting them
+        // hold it indefinitely just because nobody else has asked for work yet.
+        // They can be assigned it again below, on a fresh window.
         uint256 current = assignedTo[msg.sender];
-        if (current != 0 && !_records[current].validated) {
-            return current;
+        if (current != 0) {
+            Record storage cur = _records[current];
+            if (cur.assignee == msg.sender && !cur.validated) {
+                if (block.timestamp <= uint256(cur.assignedAt) + assignmentTimeout) {
+                    return current;
+                }
+                _release(current, msg.sender);
+            } else {
+                // Reassigned away, or validated while they held it.
+                assignedTo[msg.sender] = 0;
+            }
         }
 
         // Scan records still in play. Validated records have been removed from
@@ -190,10 +227,14 @@ contract SubmissionManager {
             uint256 id = activeRecordIds[i];
             if (hasSubmitted[msg.sender][id]) continue;
             Record storage r = _records[id];
-            bool assigned = r.assignee != address(0);
-            bool timedOut = assigned &&
-                block.timestamp > uint256(r.assignedAt) + assignmentTimeout;
-            if (!assigned || timedOut) {
+            address holder = r.assignee;
+            if (holder == address(0)) {
+                _assign(id);
+                return id;
+            }
+            if (block.timestamp > uint256(r.assignedAt) + assignmentTimeout) {
+                // Holder let their window lapse: the record is up for grabs.
+                _release(id, holder);
                 _assign(id);
                 return id;
             }
@@ -222,6 +263,9 @@ contract SubmissionManager {
         if (r.validated) revert AlreadyValidated();
         if (assignedTo[msg.sender] != recordId) revert NotYourAssignment();
         if (r.assignee != msg.sender) revert NotAssigned();
+        if (block.timestamp > uint256(r.assignedAt) + assignmentTimeout) {
+            revert SubmissionWindowClosed();
+        }
         if (hasSubmitted[msg.sender][recordId]) revert AlreadySubmitted();
         if (dataHash == bytes32(0)) revert EmptyDataHash();
         if (bytes(ipfsCid).length == 0) revert EmptyIpfsCid();
@@ -270,6 +314,15 @@ contract SubmissionManager {
     /// -----------------------------------------------------------------------
     /// Internals
     /// -----------------------------------------------------------------------
+
+    /// @dev Release a record whose holder let the assignment window close, so
+    ///      it is available again. No penalty attaches to the holder: they may
+    ///      request it again like anyone else, on a fresh window.
+    function _release(uint256 recordId, address holder) private {
+        _records[recordId].assignee = address(0);
+        assignedTo[holder] = 0;
+        emit AssignmentExpired(recordId, holder);
+    }
 
     /// @dev Append a newly created record to the active list.
     function _addActive(uint256 recordId) private {

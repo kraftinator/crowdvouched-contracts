@@ -3,6 +3,11 @@ pragma solidity ^0.8.24;
 
 import {Ownable} from "openzeppelin-contracts/access/Ownable.sol";
 
+interface ISubmissionManager {
+    function setAssignmentTimeout(uint32 assignmentTimeout) external;
+    function assignmentTimeout() external view returns (uint32);
+}
+
 /// @title  Campaign
 /// @notice Top-level contract for a single Crowdvouched campaign. Holds
 ///         campaign metadata and the addresses of the sub-contracts
@@ -40,6 +45,7 @@ contract Campaign is Ownable {
     /// -----------------------------------------------------------------------
 
     event NameUpdated(string newName);
+    event AssignmentTimeoutUpdated(uint32 assignmentTimeout);
     event DescriptionUpdated(string newDescription);
 
     /// -----------------------------------------------------------------------
@@ -85,5 +91,19 @@ contract Campaign is Ownable {
     function setDescription(string calldata _description) external onlyOwner {
         description = _description;
         emit DescriptionUpdated(_description);
+    }
+
+    /// @notice Set how long a crowdsourcer has to submit an assigned record
+    ///         before it is released back to the pool.
+    /// @dev    Campaign is the configuration surface; SubmissionManager stores
+    ///         and enforces the value.
+    function setAssignmentTimeout(uint32 _assignmentTimeout) external onlyOwner {
+        ISubmissionManager(submissionManager).setAssignmentTimeout(_assignmentTimeout);
+        emit AssignmentTimeoutUpdated(_assignmentTimeout);
+    }
+
+    /// @notice Current submission window, read through from SubmissionManager.
+    function assignmentTimeout() external view returns (uint32) {
+        return ISubmissionManager(submissionManager).assignmentTimeout();
     }
 }

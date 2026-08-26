@@ -17,10 +17,10 @@ contract Deploy is Script {
 
         vm.startBroadcast(pk);
 
-        // 1. SubmissionManager needs to know the "campaign" address up front
-        //    so it can gate setToken(). We use the deployer as the campaign
-        //    placeholder for the smoke test; in production the real Campaign
-        //    contract would be that address.
+        // 1. SubmissionManager needs a campaign address up front to gate its
+        //    setters, but Campaign needs SubmissionManager's address to be
+        //    constructed. The deployer holds the role through wiring and hands
+        //    it to the real Campaign contract at the end.
         SubmissionManager sm = new SubmissionManager(
             deployer,       // campaign owner
             5,              // totalRecords (5 for a tiny demo)
@@ -49,6 +49,10 @@ contract Deploy is Script {
         sm.setToken(address(token));
         token.setMinter(address(sm));
         token.setBurner(address(treasury));
+
+        // 6. Hand campaign control to the Campaign contract. Must come last:
+        //    once transferred, the deployer can no longer call sm's setters.
+        sm.setCampaign(address(campaign));
 
         vm.stopBroadcast();
 
